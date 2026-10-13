@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Document Studio</title>
+    <style>
+        :root {
+            --bg: #0b1120;
+            --card: #141e33;
+            --card-edge: #263450;
+            --accent: #3b82f6;
+            --accent-2: #6366f1;
+            --accent-hover: #2f6fe0;
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --faint: #64748b;
+            --border: #2b3a55;
+            --field: #0b1224;
+            --code: #7dd3fc;
+            --ok: #34d399;
+            --err: #f87171;
+            --warn: #fbbf24;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+        html, body { min-height: 100%; }
+        body {
+            background:
+                radial-gradient(1100px 520px at 50% -8%, rgba(59, 130, 246, 0.14), transparent 60%),
+                radial-gradient(900px 500px at 100% 100%, rgba(99, 102, 241, 0.08), transparent 55%),
+                var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px 60px;
+        }
+        .container {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.55), rgba(20, 30, 51, 0.9));
+            border: 1px solid var(--card-edge);
+            width: 100%;
+            max-width: 860px;
+            padding: 36px;
+            border-radius: 18px;
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.55);
+            position: relative;
+        }
+
+        /* ---------- header ---------- */
+        header { display: flex; align-items: center; gap: 16px; padding-right: 190px; }
+        .logo {
+            flex: none;
+            width: 46px; height: 46px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            display: grid; place-items: center;
+            box-shadow: 0 8px 20px -6px rgba(59, 130, 246, 0.55);
+        }
+        .logo svg { width: 24px; height: 24px; }
+        h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.01em; }
+        p.subtitle { color: var(--muted); font-size: 0.88rem; margin-top: 3px; }
+
+        .ghost-btn {
+            position: absolute;
+            top: 30px; right: 34px;
+            background: rgba(148, 163, 184, 0.07);
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: 7px 13px;
+            font-size: 0.74rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .ghost-btn:hover { background: rgba(148, 163, 184, 0.14); color: var(--text); border-color: #3b4d6b; }
+
+        /* ---------- chips ---------- */
+        .chips { display: flex; gap: 7px; margin: 22px 0 4px; flex-wrap: wrap; align-items: center; }
+        .chip {
+            font-size: 0.66rem; font-weight: 700; letter-spacing: 0.06em;
+            color: var(--faint); border: 1px solid var(--border);
+            background: rgba(148, 163, 184, 0.05);
+            padding: 4px 10px; border-radius: 999px;
+            transition: all 0.15s ease;
+        }
+        .chip.sep { border: none; background: none; padding: 0 2px; color: #3b4d6b; }
+        .chip.active {
+            color: #dbeafe;
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.16);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+        }
+
+        /* ---------- form ---------- */
+        form { margin-top: 14px; }
+        .label-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px; gap: 10px; flex-wrap: wrap;
+        }
+        label {
+            font-size: 0.74rem; font-weight: 700; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 0.07em;
+        }
+        .toolbar { display: flex; align-items: center; gap: 8px; }
+        .mini-btn {
+            background: none; border: none; padding: 0;
+            color: #7cb6f8; font-size: 0.76rem; font-weight: 600; cursor: pointer;
+        }
+        .mini-btn:hover { color: #a9cdfb; text-decoration: underline; }
+        .mini-btn.danger { color: var(--faint); }
+        .mini-btn.danger:hover { color: var(--err); }
+        .toolbar .dot { color: #33455f; }
+
+        textarea {
+            width: 100%;
+            padding: 15px 16px;
+            background: var(--field);
+            border: 1px solid var(--border);
+            color: var(--code);
+            font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+            border-radius: 10px;
+            font-size: 0.86rem;
+            outline: none;
+            resize: vertical;
+            min-height: 340px;
+            line-height: 1.55;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16); }
+        textarea::placeholder { color: #3b4d6b; }
+        textarea::-webkit-scrollbar { width: 10px; }
+        textarea::-webkit-scrollbar-thumb { background: #263450; border-radius: 6px; }
+        textarea::-webkit-scrollbar-track { background: transparent; }
+
+        /* ---------- status bar ---------- */
+        .statusbar {
+            display: flex; justify-content: space-between; align-items: center;
+            gap: 12px; margin-top: 8px; min-height: 20px;
+        }
+        .status { font-size: 0.76rem; color: var(--faint); display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+        .status .msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .status::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: #3b4d6b; }
+        .status.ok::before { background: var(--ok); box-shadow: 0 0 6px rgba(52, 211, 153, 0.7); }
+        .status.ok { color: #86efac; }
+        .status.error::before { background: var(--err); box-shadow: 0 0 6px rgba(248, 113, 113, 0.7); }
+        .status.error { color: #fca5a5; }
+        .charcount { font-size: 0.7rem; color: #475a77; flex: none; font-variant-numeric: tabular-nums; }
+
+        /* ---------- banners ---------- */
+        .banner {
+            margin-top: 14px; padding: 12px 15px;
+            border-radius: 10px; font-size: 0.83rem; line-height: 1.5;
+            display: flex; gap: 10px; align-items: flex-start;
+            animation: slideIn 0.2s ease;
+        }
+        .banner .icon { flex: none; margin-top: 1px; }
+        .banner.error { background: rgba(248, 113, 113, 0.09); border: 1px solid rgba(248, 113, 113, 0.35); color: #fecaca; }
+        .banner.success { background: rgba(52, 211, 153, 0.08); border: 1px solid rgba(52, 211, 153, 0.3); color: #a7f3d0; }
+        .banner .body { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+        .banner[hidden] { display: none; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+        /* ---------- submit ---------- */
+        button[type="submit"] {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: white;
+            border: none;
+            padding: 13px;
+            font-size: 0.98rem;
+            font-weight: 650;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 16px;
+            display: inline-flex; justify-content: center; align-items: center; gap: 10px;
+            transition: filter 0.15s ease, transform 0.05s ease;
+            box-shadow: 0 10px 24px -8px rgba(59, 130, 246, 0.55);
+        }
+        button[type="submit"]:hover { filter: brightness(1.08); }
+        button[type="submit"]:active { transform: translateY(1px); }
+        button[type="submit"]:disabled { filter: saturate(0.5) brightness(0.75); cursor: wait; }
+        .spinner {
+            width: 16px; height: 16px; flex: none;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            border-top-color: #fff; border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ---------- cheatsheet ---------- */
+        details.cheatsheet {
+            margin-top: 26px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: rgba(11, 18, 36, 0.55);
+        }
+        details.cheatsheet summary {
+            cursor: pointer; padding: 13px 18px;
+            font-size: 0.8rem; font-weight: 650; color: var(--muted);
+            list-style: none; display: flex; align-items: center; gap: 8px;
+            user-select: none;
+        }
+        details.cheatsheet summary::-webkit-details-marker { display: none; }
+        details.cheatsheet summary .arrow { transition: transform 0.15s ease; color: #475a77; }
+        details.cheatsheet[open] summary .arrow { transform: rotate(90deg); }
+        details.cheatsheet summary:hover { color: var(--text); }
+        .cheat-body { padding: 2px 18px 18px; }
+        .cheat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 26px; }
+        .cheat-row {
+            display: flex; gap: 10px; align-items: baseline;
+            padding: 4.5px 0; font-size: 0.76rem; color: var(--muted);
+            border-bottom: 1px dashed rgba(43, 58, 85, 0.6);
+        }
+        .cheat-row:last-child { border-bottom: none; }
+        .cheat-row code {
+            font-family: "Cascadia Code", Consolas, monospace;
+            color: var(--code); font-size: 0.72rem; flex: none;
+        }
+        .cheat-row span { min-width: 0; }
+        .cheat-h {
+            grid-column: 1 / -1;
+            font-size: 0.64rem; font-weight: 700; letter-spacing: 0.09em;
+            text-transform: uppercase; color: #475a77;
+            margin: 12px 0 2px;
+        }
+        .cheat-h:first-child { margin-top: 0; }
+        .cheat-note { font-size: 0.74rem; color: var(--faint); margin-top: 12px; line-height: 1.6; }
+        .cheat-note code {
+            font-family: Consolas, monospace; color: var(--code); font-size: 0.72rem;
+        }
+
+        footer.hint {
+            margin-top: 18px; text-align: center;
+            font-size: 0.7rem; color: #475a77;
+        }
+        footer.hint kbd {
+            font-family: inherit; font-size: 0.64rem;
+            background: rgba(148, 163, 184, 0.1);
+            border: 1px solid var(--border); border-bottom-width: 2px;
+            border-radius: 4px; padding: 1px 5px; color: var(--muted);
+        }
+
+        /* ---------- toasts ---------- */
+        #toastHost {
+            position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; gap: 8px; z-index: 50;
+            align-items: center; pointer-events: none;
+        }
+        .toast {
+            background: #1b2740; border: 1px solid var(--card-edge);
+            color: var(--text); font-size: 0.8rem; font-weight: 550;
+            padding: 10px 16px; border-radius: 10px;
+            box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.6);
+            animation: toastIn 0.18s ease;
+        }
+        .toast.ok { border-color: rgba(52, 211, 153, 0.45); }
+        .toast.error { border-color: rgba(248, 113, 113, 0.5); }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+        /* ---------- responsive ---------- */
+        @media (max-width: 640px) {
+            body { padding: 16px 10px 40px; }
+            .container { padding: 22px 18px; border-radius: 14px; }
+            header { padding-right: 0; flex-wrap: wrap; }
+            .ghost-btn { position: static; order: 3; margin-top: 4px; }
+            .cheat-grid { grid-template-columns: 1fr; }
+            textarea { min-height: 260px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <button type="button" class="ghost-btn" id="copyInstrBtn" title="Copy the LLM prompt that generates blueprints">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy AI Instructions
+        </button>
+
+        <header>
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/>
+                </svg>
+            </div>
+            <div>
+                <h1>JSON Blueprint Document Studio</h1>
+                <p class="subtitle">Compile one JSON blueprint into a styled PDF, Word, or PowerPoint file.</p>
+            </div>
+        </header>
+
+        <div class="chips" aria-label="Detected output format">
+            <span class="chip fmt-chip" data-fmt="pdf">PDF</span>
+            <span class="chip fmt-chip" data-fmt="docx">WORD</span>
+            <span class="chip fmt-chip" data-fmt="pptx">POWERPOINT</span>
+            <span class="chip sep">|</span>
+            <span class="chip">TABLES</span>
+            <span class="chip">CHARTS</span>
+            <span class="chip">IMAGES</span>
+            <span class="chip">TOC</span>
+            <span class="chip">CALLOUTS</span>
+            <span class="chip">CODE</span>
+        </div>
+
+        <form id="studioForm" action="/generate" method="POST">
+            <div class="label-row">
+                <label for="json_blueprint">JSON Blueprint Config</label>
+                <div class="toolbar">
+                    <button type="button" class="mini-btn" id="loadExampleBtn">Load example</button>
+                    <span class="dot">•</span>
+                    <button type="button" class="mini-btn" id="formatBtn">Format</button>
+                    <span class="dot">•</span>
+                    <button type="button" class="mini-btn danger" id="clearBtn">Clear</button>
+                </div>
+            </div>
+
+            <textarea id="json_blueprint" name="json_blueprint" spellcheck="false"
+                placeholder='{
+  "format": "pdf",
+  "title": "My Document",
+  "elements": [
+    { "type": "heading", "level": 1, "text": "Introduction" },
+    { "type": "paragraph", "text": "Your text goes here." }
+  ]
+}'></textarea>
+
+            <div class="statusbar">
+                <span class="status" id="jsonStatus" aria-live="polite"><span class="msg">Waiting for blueprint…</span></span>
+                <span class="charcount" id="charCount">0 chars</span>
+            </div>
+
+            <div class="banner error" id="errorBanner" role="alert" hidden>
+                <span class="icon">✕</span><span class="body" id="errorBody"></span>
+            </div>
+            <div class="banner success" id="successBanner" role="status" hidden>
+                <span class="icon">✓</span><span class="body" id="successBody"></span>
+            </div>
+
+            <button type="submit" id="submitBtn">
+                <span class="spinner" id="submitSpinner" hidden></span>
+                <span class="btn-label" id="submitLabel">Compile &amp; Download Document</span>
+            </button>
+        </form>
+
+        <details class="cheatsheet">
+            <summary>
+                <span class="arrow">▶</span> Blueprint cheatsheet &amp; API usage
+            </summary>
+            <div class="cheat-body">
+                <div class="cheat-grid">
+                    <div class="cheat-h">Document settings</div>
+                    <div class="cheat-row"><code>format</code><span>"pdf" | "docx" | "pptx"</span></div>
+                    <div class="cheat-row"><code>filename</code><span>download name, sanitized</span></div>
+                    <div class="cheat-row"><code>title / subtitle / author</code><span>title block + metadata</span></div>
+                    <div class="cheat-row"><code>theme_color</code><span>hex accent, e.g. "#2563EB"</span></div>
+                    <div class="cheat-row"><code>orientation</code><span>"portrait" | "landscape"</span></div>
+                    <div class="cheat-row"><code>page_size</code><span>letter | a4 | legal | a3 | a5</span></div>
+                    <div class="cheat-row"><code>header / footer</code><span>running text on every page/slide</span></div>
+                    <div class="cheat-row"><code>page_numbers</code><span>true → "Page X of Y" / slide numbers</span></div>
+                    <div class="cheat-row"><code>title_page</code><span>true → dedicated cover</span></div>
+                    <div class="cheat-h">Elements</div>
+                    <div class="cheat-row"><code>heading</code><span>{ level 1-3, text }</span></div>
+                    <div class="cheat-row"><code>paragraph</code><span>{ text }</span></div>
+                    <div class="cheat-row"><code>bullet_list</code><span>{ items } — strings or {text, level}</span></div>
+                    <div class="cheat-row"><code>numbered_list</code><span>{ items }</span></div>
+                    <div class="cheat-row"><code>callout</code><span>{ variant: info|success|warning|danger, text }</span></div>
+                    <div class="cheat-row"><code>quote</code><span>{ text, attribution? }</span></div>
+                    <div class="cheat-row"><code>code</code><span>{ language?, text }</span></div>
+                    <div class="cheat-row"><code>table</code><span>{ headers, rows, col_widths? }</span></div>
+                    <div class="cheat-row"><code>chart</code><span>{ chart_type: bar|column|line|pie, categories, series }</span></div>
+                    <div class="cheat-row"><code>stats</code><span>{ items: [{label, value}] }</span></div>
+                    <div class="cheat-row"><code>image</code><span>{ url | base64, caption?, width? }</span></div>
+                    <div class="cheat-row"><code>divider</code><span>{ }</span></div>
+                    <div class="cheat-row"><code>spacer</code><span>{ height in points }</span></div>
+                    <div class="cheat-row"><code>page_break</code><span>{ }</span></div>
+                    <div class="cheat-row"><code>toc</code><span>{ } — contents / TOC field / agenda slide</span></div>
+                </div>
+                <p class="cheat-note">
+                    Inline formatting inside any <code>text</code>: <code>**bold**</code>, <code>*italic*</code>, <code>`mono`</code>.
+                    Level-1 headings start new slides in PPTX; tables/charts/images/stats get their own slide.
+                </p>
+                <p class="cheat-note">
+                    API: <code>POST /generate</code> accepts the blueprint as a raw JSON body too —<br>
+                    <code>curl -X POST http://host/generate -H "Content-Type: application/json" -d @blueprint.json -o out.pdf</code>
+                </p>
+            </div>
+        </details>
+
+        <footer class="hint">Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to compile · your draft is saved locally as you type</footer>
+    </div>
+
+    <div id="toastHost" aria-live="polite"></div>
+
+    <script>
+        const form = document.getElementById('studioForm');
+        const ta = document.getElementById('json_blueprint');
+        const statusEl = document.getElementById('jsonStatus');
+        const statusMsg = statusEl.querySelector('.msg');
+        const charCount = document.getElementById('charCount');
+        const errorBanner = document.getElementById('errorBanner');
+        const errorBody = document.getElementById('errorBody');
+        const successBanner = document.getElementById('successBanner');
+        const successBody = document.getElementById('successBody');
+        const submitBtn = document.getElementById('submitBtn');
+        const submitSpinner = document.getElementById('submitSpinner');
+        const submitLabel = document.getElementById('submitLabel');
+        const DRAFT_KEY = 'jds.draft.v1';
+
+        /* ---------------- toasts ---------------- */
+        function toast(msg, kind) {
+            const host = document.getElementById('toastHost');
+            const el = document.createElement('div');
+            el.className = 'toast' + (kind ? ' ' + kind : '');
+            el.textContent = msg;
+            host.appendChild(el);
+            setTimeout(() => el.remove(), 2600);
+        }
+
+        /* ---------------- live validation ---------------- */
+        function setStatus(kind, msg) {
+            statusEl.classList.remove('ok', 'error');
+            if (kind) statusEl.classList.add(kind);
+            statusMsg.textContent = msg;
+        }
+
+        function updateFormatChips(cfg) {
+            document.querySelectorAll('.fmt-chip').forEach(chip => {
+                chip.classList.toggle('active', !!cfg &&
+                    (cfg.format || 'pdf').toLowerCase() === chip.dataset.fmt);
+            });
+        }
+
+        let analyzeTimer = null;
+        function analyze() {
+            const raw = ta.value;
+            charCount.textContent = raw.length.toLocaleString() + ' chars';
+            try { localStorage.setItem(DRAFT_KEY, raw); } catch (e) { /* private mode */ }
+
+            if (!raw.trim()) {
+                updateFormatChips(null);
+                setStatus(null, 'Waiting for blueprint…');
+                return;
+            }
+            let cfg;
+            try {
+                cfg = JSON.parse(raw);
+            } catch (e) {
+                updateFormatChips(null);
+                setStatus('error', 'Invalid JSON — ' + e.message);
+                return;
+            }
+            if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) {
+                updateFormatChips(null);
+                setStatus('error', 'Blueprint must be a single JSON object.');
+                return;
+            }
+            const fmt = (cfg.format || 'pdf').toLowerCase();
+            const n = Array.isArray(cfg.elements) ? cfg.elements.length : 0;
+            updateFormatChips(cfg);
+            const bits = ['Valid blueprint', n + ' element' + (n === 1 ? '' : 's'), fmt.toUpperCase()];
+            if (cfg.title) bits.push('"' + String(cfg.title).slice(0, 40) + '"');
+            setStatus('ok', bits.join('  ·  '));
+        }
+
+        ta.addEventListener('input', () => {
+            clearTimeout(analyzeTimer);
+            analyzeTimer = setTimeout(analyze, 150);
+        });
+
+        /* ---------------- toolbar ---------------- */
+        const EXAMPLE_BLUEPRINT = {
+            format: "pdf",
+            filename: "quarterly-report.pdf",
+            title: "Northwind Quarterly Report",
+            subtitle: "Q3 2026 \u2014 Prepared for the Executive Team",
+            author: "Strategy Office",
+            theme_color: "#2563EB",
+            orientation: "portrait",
+            page_size: "letter",
+            header: "Northwind Inc. \u2014 Confidential",
+            footer: "Generated by JSON Document Studio",
+            page_numbers: true,
+            title_page: true,
+            elements: [
+                { type: "toc" },
+                { type: "heading", level: 1, text: "Executive Summary" },
+                { type: "paragraph", text: "Revenue grew **18% year over year**, driven by *enterprise expansion* in APAC. The `pilot` pipeline converts at 34%." },
+                { type: "callout", variant: "success", text: "Northwind closed Q3 ahead of plan on every core metric." },
+                { type: "stats", items: [
+                    { label: "Revenue", value: "$48.2M" },
+                    { label: "New logos", value: "127" },
+                    { label: "NPS", value: "61" },
+                    { label: "Churn", value: "2.1%" }
+                ]},
+                { type: "heading", level: 1, text: "Performance Detail" },
+                { type: "bullet_list", items: ["Enterprise ARR up 24%", "EMEA coverage at 3.1x", { text: "CSAT steady at 94%", level: 1 }] },
+                { type: "table", headers: ["Region", "Revenue", "Growth", "Status"], rows: [
+                    ["AMER", "$21.4M", "+12%", "On plan"],
+                    ["EMEA", "$14.1M", "+21%", "Ahead"],
+                    ["APAC", "$12.7M", "+31%", "Ahead"]
+                ], col_widths: [30, 25, 20, 25] },
+                { type: "chart", chart_type: "column", title: "Revenue by Quarter ($M)", categories: ["Q4 25", "Q1 26", "Q2 26", "Q3 26"], series: [{ name: "Revenue", values: [38.1, 41.0, 44.6, 48.2] }] },
+                { type: "numbered_list", items: ["Dual-source EMEA packaging", "Open FX hedging window", "Approve contractor bridge"] },
+                { type: "quote", text: "We will out-execute, not out-spend.", attribution: "CEO, quarterly all-hands" },
+                { type: "divider" },
+                { type: "code", language: "python", text: "def refresh_metrics(quarter):\n    data = warehouse.query(METRICS_SQL, quarter=quarter)\n    return publish(data)" },
+                { type: "page_break" },
+                { type: "heading", level: 1, text: "Thank You" },
+                { type: "paragraph", text: "Questions? Contact the Strategy Office." }
+            ]
+        };
+
+        document.getElementById('loadExampleBtn').addEventListener('click', () => {
+            ta.value = JSON.stringify(EXAMPLE_BLUEPRINT, null, 2);
+            hideBanners();
+            analyze();
+            toast('Example loaded', 'ok');
+        });
+
+        document.getElementById('formatBtn').addEventListener('click', () => {
+            if (!ta.value.trim()) { toast('Nothing to format', 'error'); return; }
+            try {
+                ta.value = JSON.stringify(JSON.parse(ta.value), null, 2);
+                analyze();
+                toast('JSON formatted', 'ok');
+            } catch (e) {
+                toast('Cannot format — JSON has errors', 'error');
+            }
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (ta.value.trim() && !confirm('Clear the blueprint editor?')) return;
+            ta.value = '';
+            hideBanners();
+            analyze();
+        });
+
+        /* ---------------- compile via fetch ---------------- */
+        function hideBanners() {
+            errorBanner.hidden = true;
+            successBanner.hidden = true;
+        }
+
+        function showError(msg) {
+            successBanner.hidden = true;
+            errorBody.textContent = msg;
+            errorBanner.hidden = false;
+        }
+
+        function showSuccess(msg) {
+            errorBanner.hidden = true;
+            successBody.textContent = msg;
+            successBanner.hidden = false;
+        }
+
+        function setBusy(busy) {
+            submitBtn.disabled = busy;
+            submitSpinner.hidden = !busy;
+            submitLabel.textContent = busy ? 'Compiling…' : 'Compile & Download Document';
+        }
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+        }
+
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            hideBanners();
+            setBusy(true);
+            try {
+                const resp = await fetch('/generate', { method: 'POST', body: new FormData(form) });
+                if (!resp.ok) {
+                    let msg = 'Generation failed (HTTP ' + resp.status + ').';
+                    try { msg = (await resp.text()).trim() || msg; } catch (e) { /* keep default */ }
+                    showError(msg);
+                } else {
+                    const blob = await resp.blob();
+                    let name = 'document';
+                    const cd = resp.headers.get('Content-Disposition') || '';
+                    const m = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+                    if (m) name = decodeURIComponent(m[1]);
+                    downloadBlob(blob, name);
+                    showSuccess('Compiled ' + name + ' (' + (blob.size / 1024).toFixed(1) +
+                        ' KB) — download started. Your blueprint stays in the editor.');
+                }
+            } catch (err) {
+                showError('Network error — ' + err.message);
+            } finally {
+                setBusy(false);
+            }
+        });
+
+        /* Ctrl/Cmd + Enter submits */
+        ta.addEventListener('keydown', (ev) => {
+            if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') {
+                ev.preventDefault();
+                form.requestSubmit();
+            }
+        });
+
+        /* ---------------- copy AI instructions ---------------- */
+        function copyText(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                return navigator.clipboard.writeText(text);
+            }
+            return new Promise((resolve, reject) => {
+                const tmp = document.createElement('textarea');
+                tmp.value = text;
+                tmp.style.position = 'fixed';
+                tmp.style.opacity = '0';
+                document.body.appendChild(tmp);
+                tmp.select();
+                try {
+                    document.execCommand('copy') ? resolve() : reject(new Error('copy rejected'));
+                } catch (e) {
+                    reject(e);
+                } finally {
+                    tmp.remove();
+                }
+            });
+        }
+
+        document.getElementById('copyInstrBtn').addEventListener('click', () => {
+            const instructionsText = `You are an Advanced JSON Blueprint Generator for the JSON Document Studio engine. Convert the user's request into ONE valid JSON blueprint that compiles into a PDF, Word (.docx) or PowerPoint (.pptx) document. Output ONLY the JSON object \u2014 no markdown fences, no commentary.
+
+### Document-level settings
+{
+  "format": "pdf" | "docx" | "pptx",        // default "pdf"
+  "filename": "document_name.ext",          // sanitized automatically
+  "title": "Main Document Title",
+  "subtitle": "Subtitle, version or date line",
+  "author": "Author name",
+  "theme_color": "#2563EB",                 // hex color, used for headings/tables/charts
+  "orientation": "portrait" | "landscape",  // default "portrait"
+  "page_size": "letter" | "a4" | "legal" | "a3" | "a5",
+  "margin": 54,                             // page margin in points (24-144)
+  "header": "Running header text",
+  "footer": "Running footer text",
+  "page_numbers": true,                     // "Page X of Y" / slide numbers
+  "title_page": true,                       // dedicated cover page / title slide
+  "elements": [ ... ]
+}
+
+### Element types (any order, any count)
+{ "type": "heading",        "level": 1,              "text": "Section title" }            // level 1-3
+{ "type": "paragraph",      "text": "Body text..." }
+{ "type": "bullet_list",    "items": ["First", "Second", {"text": "Nested", "level": 1}] }
+{ "type": "numbered_list",  "items": ["First", "Second"] }
+{ "type": "callout",        "variant": "info",       "text": "Highlighted notice." }      // info | success | warning | danger
+{ "type": "quote",          "text": "Quoted words.", "attribution": "Source Person" }
+{ "type": "code",           "language": "python",    "text": "def foo():\\n    return 1" }
+{ "type": "table",          "headers": ["A", "B"],   "rows": [["1", "2"], ["3", "4"]],
+                            "col_widths": [60, 40] }                                      // optional percents
+{ "type": "chart",          "chart_type": "column",  "title": "Chart title",
+                            "categories": ["Q1", "Q2"],
+                            "series": [{"name": "Sales", "values": [10, 20]}] }            // bar | column | line | pie
+{ "type": "stats",          "items": [{"label": "Revenue", "value": "$1.2M"}] }           // big-number metric row
+{ "type": "image",          "url": "https://.../pic.png", "caption": "Caption", "width": 600 }
+{ "type": "image",          "base64": "data:image/png;base64,...." }
+{ "type": "divider" }                                                                     // separator line
+{ "type": "spacer",         "height": 20 }                                               // vertical gap in points
+{ "type": "page_break" }
+{ "type": "toc" }                                                                         // PDF: linked TOC + bookmarks | DOCX: TOC field | PPTX: agenda slide
+
+### Inline formatting
+Inside any "text" field you may use **bold**, *italic* and \`monospace\`. Raw HTML characters are escaped and displayed literally.
+
+### Per-format behavior
+- PDF / DOCX: flowing documents \u2014 use headings, paragraphs, tables, page_break and toc freely.
+- PPTX: every level-1 heading starts a new slide (levels 2-3 become bold sub-lines inside a slide); table, chart, image and stats each get their own slide; keep text concise.
+- Charts are native vector charts in PDF and PPTX; DOCX renders chart data as a styled table.
+
+### Rules
+1. Output ONLY valid JSON \u2014 no markdown fences, no explanation.
+2. Every element MUST include its required fields; table rows must match the header count.
+3. chart_type must be one of: bar, column, line, pie.
+4. Pick a sensible theme_color, title, subtitle and author for the requested document.
+5. Prefer structured content (headings, bullets, tables, callouts) over long paragraphs.`;
+
+            copyText(instructionsText).then(() => {
+                toast('AI instructions copied to clipboard', 'ok');
+            }).catch(() => {
+                toast('Copy failed — clipboard unavailable', 'error');
+            });
+        });
+
+        /* ---------------- init: restore draft ---------------- */
+        (function init() {
+            let saved = '';
+            try { saved = localStorage.getItem(DRAFT_KEY) || ''; } catch (e) { /* private mode */ }
+            if (saved.trim()) ta.value = saved;
+            analyze();
+        })();
+    </script>
+
+</body>
+</html>
