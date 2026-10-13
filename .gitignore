@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.vercel/
+.DS_Store
+*.zip
+tests/output/

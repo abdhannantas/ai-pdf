@@ -1,0 +1,5 @@
+flask
+reportlab
+python-docx
+python-pptx
+Pillow
